@@ -1,0 +1,12 @@
+# Only the web app and its algorithm library go into the image.
+**/bin/
+**/obj/
+**/*.user
+.git/
+.github/
+.vs/
+.vscode/
+Claude outputs/
+deploy/
+src/ImageConverter.App/
+src/ImageConverter.Core/

@@ -1,0 +1,40 @@
+# ImageConverter on the server – used by /usr/local/bin/imageconverter-deploy.
+# Installed to /opt/imageconverter/docker-compose.yml by setup-server.sh.
+#
+# Do not edit values here – all settings (image, port, CPU/RAM limits, app settings) live in
+# /etc/imageconverter/imageconverter.env (template: imageconverter.env.example).
+name: imageconverter
+
+services:
+  web:
+    image: "${IMAGECONVERTER_IMAGE:?set IMAGECONVERTER_IMAGE in imageconverter.env}:${IMAGECONVERTER_TAG:-latest}"
+    container_name: imageconverter
+    restart: unless-stopped
+
+    # host port -> container port 8080
+    ports:
+      - "${IMAGECONVERTER_BIND:-127.0.0.1}:${IMAGECONVERTER_PORT:-5080}:8080"
+
+    # app settings such as TspDefaults__AutoPixelsPerPoint come from the same file
+    env_file:
+      - "${IMAGECONVERTER_ENV_FILE:-/etc/imageconverter/imageconverter.env}"
+
+    # share the server politely with your other apps – a conversion can use every core it gets
+    cpus: "${IMAGECONVERTER_CPUS:-2}"
+    mem_limit: "${IMAGECONVERTER_MEMORY:-4g}"
+    pids_limit: 512
+
+    # hardening: no writable filesystem except /tmp, no Linux capabilities, no privilege escalation
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

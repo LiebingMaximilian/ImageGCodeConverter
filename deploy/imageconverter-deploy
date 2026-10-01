@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# Installed as /usr/local/bin/imageconverter-deploy (root:root, 755) by setup-server.sh.
+#
+# This is the ONLY thing the GitHub deploy key can do on the server:
+#   authorized_keys:  command="sudo -n /usr/local/bin/imageconverter-deploy $SSH_ORIGINAL_COMMAND"
+#   sudoers:          deploy ALL=(root) NOPASSWD: /usr/local/bin/imageconverter-deploy
+# so every argument is validated strictly below.
+#
+# Usage:
+#   imageconverter-deploy deploy <40-char commit sha>   pull that image, start it, health-check, roll back on failure
+#   imageconverter-deploy restart                       recreate the container (after editing the env file)
+#   imageconverter-deploy status                        show container state
+set -euo pipefail
+
+CONF=/etc/imageconverter/imageconverter.env
+COMPOSE_FILE=/opt/imageconverter/docker-compose.yml
+STATE_DIR=/var/lib/imageconverter
+CONTAINER=imageconverter
+export DOCKER_CONFIG=/root/.docker      # registry login of root (for private images)
+
+die()   { echo "imageconverter-deploy: $*" >&2; exit 2; }
+usage() { die "usage: deploy <commit-sha> | restart | status"; }
+
+# Arguments arrive as separate words (also when coming from SSH_ORIGINAL_COMMAND).
+ACTION="${1:-}"
+TAG="${2:-}"
+[[ $# -le 2 ]] || usage
+
+[[ -r "$CONF" ]] || die "missing $CONF"
+set -a
+# shellcheck source=/dev/null
+source "$CONF"
+set +a
+: "${IMAGECONVERTER_IMAGE:?IMAGECONVERTER_IMAGE is not set in $CONF}"
+[[ "$IMAGECONVERTER_IMAGE" =~ ^[a-z0-9./_-]+$ ]] || die "IMAGECONVERTER_IMAGE must be lowercase"
+PORT="${IMAGECONVERTER_PORT:-5080}"
+BIND="${IMAGECONVERTER_BIND:-127.0.0.1}"
+[[ "$PORT" =~ ^[0-9]{1,5}$ ]] || die "IMAGECONVERTER_PORT must be a number"
+HEALTH_HOST="$BIND"; [[ "$BIND" == "0.0.0.0" ]] && HEALTH_HOST=127.0.0.1
+HEALTH_URL="http://$HEALTH_HOST:$PORT/api/schema"
+
+mkdir -p "$STATE_DIR"
+CURRENT="$(cat "$STATE_DIR/current-tag" 2>/dev/null || true)"
+
+compose() {   # compose <tag> <args...>
+  local tag="$1"; shift
+  IMAGECONVERTER_TAG="$tag" docker compose -f "$COMPOSE_FILE" --env-file "$CONF" "$@"
+}
+
+healthy() {
+  for _ in $(seq 1 60); do
+    if curl -fsS -o /dev/null --max-time 3 "$HEALTH_URL" 2>/dev/null; then return 0; fi
+    sleep 1
+  done
+  return 1
+}
+
+start() {     # start <tag>: (re)create the container with that image and wait until it answers
+  compose "$1" up -d --remove-orphans && healthy
+}
+
+case "$ACTION" in
+  status)
+    [[ -z "$TAG" ]] || usage
+    echo "image:   $IMAGECONVERTER_IMAGE:${CURRENT:-<none>}"
+    echo "address: $BIND:$PORT"
+    docker ps --all --filter "name=^/${CONTAINER}$" --format 'state:   {{.Status}}'
+    exit 0
+    ;;
+
+  restart)
+    [[ -z "$TAG" ]] || usage
+    [[ -n "$CURRENT" ]] || die "nothing deployed yet"
+    start "$CURRENT" || { docker logs --tail 40 "$CONTAINER" >&2 || true; die "restart failed"; }
+    echo "Restarted $IMAGECONVERTER_IMAGE:$CURRENT on $BIND:$PORT"
+    exit 0
+    ;;
+
+  deploy)
+    [[ "$TAG" =~ ^[0-9a-f]{40}$ ]] || die "deploy needs a full 40-character commit SHA"
+    ;;
+
+  *) usage ;;
+esac
+
+echo "Pulling $IMAGECONVERTER_IMAGE:$TAG"
+compose "$TAG" pull --quiet
+
+if start "$TAG"; then
+  [[ -n "$CURRENT" && "$CURRENT" != "$TAG" ]] && echo "$CURRENT" > "$STATE_DIR/previous-tag"
+  echo "$TAG" > "$STATE_DIR/current-tag"
+  echo "Deployed $IMAGECONVERTER_IMAGE:$TAG on $BIND:$PORT"
+
+  # keep only the current and the previous image of this app
+  PREVIOUS="$(cat "$STATE_DIR/previous-tag" 2>/dev/null || true)"
+  docker images "$IMAGECONVERTER_IMAGE" --format '{{.Tag}}' | while read -r t; do
+    [[ "$t" == "$TAG" || "$t" == "$PREVIOUS" ]] && continue
+    docker rmi "$IMAGECONVERTER_IMAGE:$t" >/dev/null 2>&1 || true
+  done
+  exit 0
+fi
+
+echo "Health check failed for $TAG – last log lines:" >&2
+docker logs --tail 40 "$CONTAINER" >&2 || true
+
+if [[ -n "$CURRENT" && "$CURRENT" != "$TAG" ]]; then
+  echo "Rolling back to $CURRENT" >&2
+  if start "$CURRENT"; then
+    echo "Rollback OK – $CURRENT is running again." >&2
+  else
+    echo "Rollback FAILED – check: docker logs $CONTAINER" >&2
+  fi
+else
+  echo "No previous version to roll back to." >&2
+fi
+exit 1
