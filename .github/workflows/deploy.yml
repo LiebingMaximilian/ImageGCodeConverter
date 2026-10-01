@@ -57,7 +57,7 @@ jobs:
           context: .
           file: src/ImageConverter.Web/Dockerfile
           # ARM server (e.g. Raspberry Pi, Ampere)? use "linux/arm64" and add docker/setup-qemu-action before buildx
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}

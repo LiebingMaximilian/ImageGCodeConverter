@@ -4,7 +4,9 @@
 #   docker run --rm -p 5080:8080 imageconverter          -> http://localhost:5080
 
 # ---- build ----
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# Runs natively on the build machine (no emulation) for every target platform: with
+# UseAppHost=false the output is platform-independent .NET IL, so the same build works on amd64 and arm64.
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # restore first (cached as long as the project files don't change)
@@ -18,6 +20,7 @@ RUN dotnet publish src/ImageConverter.Web/ImageConverter.Web.csproj \
         -c Release --no-restore -o /app /p:UseAppHost=false
 
 # ---- runtime ----
+# the target platform's runtime image (amd64 or arm64) – only COPY here, so no emulation is needed
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app .
