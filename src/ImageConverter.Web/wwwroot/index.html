@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ImageConverter – single line</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header>
+  <h1>ImageConverter</h1>
+  <span class="sub">Image → one continuous line (TSP art) → G-code</span>
+</header>
+
+<main>
+  <!-- ============ settings ============ -->
+  <aside id="settings">
+    <section class="card">
+      <h2>Points</h2>
+      <div class="row">
+        <label for="PointCount">Number of points</label>
+        <input id="PointCount" data-section="tsp" data-key="PointCount" type="number" min="100" max="10000000" step="1000">
+      </div>
+      <label class="check"><input id="AutoPointCount" data-section="tsp" data-key="AutoPointCount" type="checkbox"> Automatic (from image size)</label>
+      <p class="hint" id="pointHint"></p>
+    </section>
+
+    <section class="card">
+      <h2>Drawing size</h2>
+      <div class="grid2">
+        <div class="row"><label for="WidthMm">Width (mm)</label>
+          <input id="WidthMm" data-section="gcode" data-key="WidthMm" type="number" min="1" step="1"></div>
+        <div class="row"><label for="HeightMm">Height (mm)</label>
+          <input id="HeightMm" data-section="gcode" data-key="HeightMm" type="number" min="1" step="1"></div>
+      </div>
+      <label class="check"><input id="KeepAspectRatio" data-section="gcode" data-key="KeepAspectRatio" type="checkbox"> Keep aspect ratio (fit inside)</label>
+      <p class="hint" id="sizeHint"></p>
+    </section>
+
+    <section class="card">
+      <h2>Pen &amp; speed</h2>
+      <div class="row"><label for="PenDownCommand">Pen down command</label>
+        <input id="PenDownCommand" data-section="gcode" data-key="PenDownCommand" type="text" spellcheck="false"></div>
+      <div class="row"><label for="PenUpCommand">Pen up command</label>
+        <input id="PenUpCommand" data-section="gcode" data-key="PenUpCommand" type="text" spellcheck="false"></div>
+      <div class="row"><label for="FeedRate">Draw feed rate (mm/min)</label>
+        <input id="FeedRate" data-section="gcode" data-key="FeedRate" type="number" min="1" step="100"></div>
+    </section>
+
+    <section class="card">
+      <h2>All parameters</h2>
+      <div id="allParams"></div>
+      <button id="resetBtn" class="secondary" type="button">Reset all to defaults</button>
+    </section>
+  </aside>
+
+  <!-- ============ work area ============ -->
+  <section id="work">
+    <div id="drop" tabindex="0" role="button" aria-label="Choose or drop an image">
+      <input id="fileInput" type="file" accept="image/png,image/jpeg" hidden>
+      <img id="thumb" alt="" hidden>
+      <div id="dropText">
+        <strong>Drop a JPG or PNG here</strong>
+        <span>or click to choose a file</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="generateBtn" type="button" disabled>Generate line</button>
+      <button id="cancelBtn" type="button" class="secondary" hidden>Cancel</button>
+      <span id="status" aria-live="polite"></span>
+    </div>
+
+    <div class="card preview-card">
+      <div class="preview-toolbar">
+        <strong>Preview</strong>
+        <button id="fitBtn" type="button" class="secondary small">Fit</button>
+        <label class="check small"><input id="showOriginal" type="checkbox"> show original</label>
+        <label class="small" title="Pen width on paper. The preview, PNG and SVG show the line at this real width relative to the drawing size.">pen
+          <input id="lineWidth" type="range" min="0.05" max="2" step="0.05" value="0.3">
+          <output id="lineWidthMm" for="lineWidth">0.30 mm</output></label>
+        <span class="hint">scroll = zoom · drag = pan · <span class="legend start"></span>start <span class="legend end"></span>end</span>
+      </div>
+      <div id="canvasWrap">
+        <canvas id="canvas"></canvas>
+        <div id="emptyPreview">The result will appear here.</div>
+      </div>
+    </div>
+
+    <div id="results" hidden>
+      <div class="card">
+        <h2>Result</h2>
+        <dl id="stats"></dl>
+        <div class="downloads">
+          <a id="dlGcode" class="button" href="#" download>Download G-code</a>
+          <a id="dlSvg" class="button secondary" href="#" download>Download SVG</a>
+          <button id="dlPng" type="button" class="secondary">Download PNG</button>
+          <select id="pngSize" aria-label="PNG size">
+            <option value="2000">2000 px</option>
+            <option value="4000" selected>4000 px</option>
+            <option value="8000">8000 px</option>
+          </select>
+        </div>
+      </div>
+      <div class="card">
+        <h2>G-code (start)</h2>
+        <pre id="gcodeHead"></pre>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

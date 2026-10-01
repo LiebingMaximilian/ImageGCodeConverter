@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageConverter.App", "src\ImageConverter.App\ImageConverter.App.csproj", "{946D05CA-C685-4CB4-BCFC-6E89B3EFC98D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageConverter.Core", "src\ImageConverter.Core\ImageConverter.Core.csproj", "{D2FBF79A-61EE-414A-9195-5CC0557571AC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E448702F-1C15-4064-B207-178E5D1F6E05}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageConverter.Algorithms", "src\ImageConverter.Algorithms\ImageConverter.Algorithms.csproj", "{0F100819-5E7E-4CF1-B1E6-96A9FA9C0A95}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageConverter.Web", "src\ImageConverter.Web\ImageConverter.Web.csproj", "{329BA017-B48B-4403-AE61-D97409652B84}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D2FBF79A-61EE-414A-9195-5CC0557571AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D2FBF79A-61EE-414A-9195-5CC0557571AC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D2FBF79A-61EE-414A-9195-5CC0557571AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D2FBF79A-61EE-414A-9195-5CC0557571AC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{946D05CA-C685-4CB4-BCFC-6E89B3EFC98D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{946D05CA-C685-4CB4-BCFC-6E89B3EFC98D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{946D05CA-C685-4CB4-BCFC-6E89B3EFC98D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{946D05CA-C685-4CB4-BCFC-6E89B3EFC98D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0F100819-5E7E-4CF1-B1E6-96A9FA9C0A95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F100819-5E7E-4CF1-B1E6-96A9FA9C0A95}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F100819-5E7E-4CF1-B1E6-96A9FA9C0A95}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F100819-5E7E-4CF1-B1E6-96A9FA9C0A95}.Release|Any CPU.Build.0 = Release|Any CPU
+		{329BA017-B48B-4403-AE61-D97409652B84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{329BA017-B48B-4403-AE61-D97409652B84}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{329BA017-B48B-4403-AE61-D97409652B84}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{329BA017-B48B-4403-AE61-D97409652B84}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D2FBF79A-61EE-414A-9195-5CC0557571AC} = {E448702F-1C15-4064-B207-178E5D1F6E05}
+		{946D05CA-C685-4CB4-BCFC-6E89B3EFC98D} = {E448702F-1C15-4064-B207-178E5D1F6E05}
+		{0F100819-5E7E-4CF1-B1E6-96A9FA9C0A95} = {E448702F-1C15-4064-B207-178E5D1F6E05}
+		{329BA017-B48B-4403-AE61-D97409652B84} = {E448702F-1C15-4064-B207-178E5D1F6E05}
+	EndGlobalSection
+EndGlobal

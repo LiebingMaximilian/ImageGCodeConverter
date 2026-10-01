@@ -1,0 +1,28 @@
+# --- Build output ---
+bin/
+obj/
+publish/
+[Ll]og/
+TestResults/
+
+# --- Visual Studio / Rider / VS Code user state ---
+.vs/
+*.user
+*.suo
+*.userprefs
+*.pubxml.user
+*.DotSettings.user
+.idea/
+# keep the shared debug configs, ignore personal VS Code settings
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# --- Local/test files (not source code) ---
+Claude outputs/
+*.gcode
+
+# --- OS junk ---
+Thumbs.db
+desktop.ini
+.DS_Store

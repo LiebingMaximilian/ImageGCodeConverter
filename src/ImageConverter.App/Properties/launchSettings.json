@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "ImageConverter.App (Debug)": {
+      "commandName": "Project",
+      "workingDirectory": "$(ProjectDir)",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

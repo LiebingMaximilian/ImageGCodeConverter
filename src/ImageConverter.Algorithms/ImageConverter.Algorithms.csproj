@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Platform-independent algorithms (no System.Drawing): stippling, TSP tour, G-code.
+       Used by the WinForms app (via Core) and by the web app. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ImageConverter.Core</RootNamespace>
+  </PropertyGroup>
+
+</Project>
