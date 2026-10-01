@@ -65,6 +65,8 @@ input[type=number], input[type=text], textarea, select {
 textarea { font-family: ui-monospace, Consolas, monospace; min-height: 54px; resize: vertical; }
 input[type=text] { font-family: ui-monospace, Consolas, monospace; }
 .check { display: flex; align-items: center; gap: 6px; margin: 4px 0; cursor: pointer; }
+.mode-option { align-items: flex-start; padding: 4px 0; }
+.mode-option input { margin-top: 3px; }
 .hint { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
 .desc { color: var(--muted); font-size: 12px; }
 

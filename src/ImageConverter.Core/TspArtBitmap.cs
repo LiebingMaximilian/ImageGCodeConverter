@@ -6,7 +6,7 @@ namespace ImageConverter.Core.Tsp;
 /// <summary>System.Drawing-dependent TSP-art helpers (Bitmap in, preview Bitmap out).</summary>
 public static class TspArtBitmap
 {
-    public static TspArtResult Generate(Bitmap bitmap, TspArtSettings settings,
+    public static LineArtResult Generate(Bitmap bitmap, TspArtSettings settings,
                                         IProgress<string>? progress = null, CancellationToken ct = default)
     {
         float[] gray = BitmapPixels.ToGrayscale(bitmap);
@@ -14,7 +14,7 @@ public static class TspArtBitmap
     }
 
     /// <summary>Draws the single line black on white, so you can check it before plotting.</summary>
-    public static Bitmap RenderPreview(TspArtResult result, float scale = 2f, float lineWidth = 1f, int maxSize = 6000)
+    public static Bitmap RenderPreview(LineArtResult result, float scale = 2f, float lineWidth = 1f, int maxSize = 6000)
     {
         scale = Math.Max(0.01f, scale);
         float longSide = Math.Max(result.Width, result.Height) * scale;

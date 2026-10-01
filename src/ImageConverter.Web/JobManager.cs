@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
+using ImageConverter.Core;
 using ImageConverter.Core.Export;
 using ImageConverter.Core.GCode;
+using ImageConverter.Core.Spiral;
 using ImageConverter.Core.Tsp;
 
 namespace ImageConverter.Web;
@@ -13,6 +15,8 @@ public sealed class Job
 {
     public string Id { get; } = Guid.NewGuid().ToString("N");
     public required string Name { get; init; }
+    public required string Mode { get; init; }          // "tsp" or "spiral"
+    public string FileSuffix => Mode == "spiral" ? "spiral" : "tsp";
     public DateTime Created { get; } = DateTime.UtcNow;
     public CancellationTokenSource Cts { get; } = new();
     public Stopwatch Clock { get; } = new();
@@ -22,7 +26,7 @@ public sealed class Job
     public string? Error;
 
     // results
-    public TspArtResult? Art;
+    public LineArtResult? Art;
     public GCodeResult? GCode;
     public GCodeSettings? GCodeSettings;
     public byte[]? PathBytes;      // float32 LE: x0,y0,x1,y1,…
@@ -32,6 +36,7 @@ public sealed class Job
     public object ToStatus() => new
     {
         id = Id,
+        mode = Mode,
         status = Status.ToString().ToLowerInvariant(),
         message = Message,
         error = Error,
@@ -68,11 +73,12 @@ public sealed class JobManager : IDisposable
 
     public bool TryGet(string id, out Job job) => _jobs.TryGetValue(id, out job!);
 
-    public Job Start(float[] gray, int width, int height, string name, TspArtSettings tsp, GCodeSettings gcode)
+    public Job Start(float[] gray, int width, int height, string name, string mode,
+                     TspArtSettings tsp, SpiralSettings spiral, GCodeSettings gcode)
     {
-        var job = new Job { Name = name };
+        var job = new Job { Name = name, Mode = mode == "spiral" ? "spiral" : "tsp" };
         _jobs[job.Id] = job;
-        _ = Task.Run(() => RunAsync(job, gray, width, height, tsp, gcode));
+        _ = Task.Run(() => RunAsync(job, gray, width, height, tsp, spiral, gcode));
         return job;
     }
 
@@ -81,7 +87,8 @@ public sealed class JobManager : IDisposable
         if (_jobs.TryGetValue(id, out var job)) job.Cts.Cancel();
     }
 
-    private async Task RunAsync(Job job, float[] gray, int width, int height, TspArtSettings tsp, GCodeSettings gcode)
+    private async Task RunAsync(Job job, float[] gray, int width, int height,
+                                TspArtSettings tsp, SpiralSettings spiral, GCodeSettings gcode)
     {
         var ct = job.Cts.Token;
         bool entered = false;
@@ -94,7 +101,9 @@ public sealed class JobManager : IDisposable
             job.Clock.Start();
             var progress = new ActionProgress(m => job.Message = m);
 
-            var art = TspArtGenerator.Generate(gray, width, height, tsp, progress, ct);
+            var art = job.Mode == "spiral"
+                ? SpiralGenerator.Generate(gray, width, height, spiral, progress, ct)
+                : TspArtGenerator.Generate(gray, width, height, tsp, progress, ct);
 
             job.Message = "Writing G-code…";
             var g = GCodeWriter.Write(art.Path, art.Width, art.Height, gcode, job.Name);

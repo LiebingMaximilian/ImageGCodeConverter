@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using ImageConverter.Core.GCode;
+using ImageConverter.Core.Spiral;
 using ImageConverter.Core.Tsp;
 
 namespace ImageConverter.App;
@@ -9,7 +10,8 @@ namespace ImageConverter.App;
 public enum ConversionMode
 {
     TspArt = 0,
-    Sobel = 1
+    Sobel = 1,
+    Spiral = 2
 }
 
 [TypeConverter(typeof(ExpandableObjectConverter))]
@@ -34,10 +36,13 @@ public sealed class AppSettings
     [Category("1  TSP art (single line)"), DisplayName("TSP art")]
     public TspArtSettings Tsp { get; set; } = new();
 
-    [Category("2  G-code / machine"), DisplayName("G-code")]
+    [Category("2  Spiral"), DisplayName("Spiral")]
+    public SpiralSettings Spiral { get; set; } = new();
+
+    [Category("3  G-code / machine"), DisplayName("G-code")]
     public GCodeSettings GCode { get; set; } = new();
 
-    [Category("3  Sobel"), DisplayName("Sobel")]
+    [Category("4  Sobel"), DisplayName("Sobel")]
     public SobelOptions Sobel { get; set; } = new();
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };

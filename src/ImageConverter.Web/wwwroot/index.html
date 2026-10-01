@@ -16,6 +16,14 @@
   <!-- ============ settings ============ -->
   <aside id="settings">
     <section class="card">
+      <h2>Mode</h2>
+      <label class="check mode-option"><input type="radio" name="mode" value="tsp">
+        <span><strong>TSP art</strong> – dots joined into one line</span></label>
+      <label class="check mode-option"><input type="radio" name="mode" value="spiral">
+        <span><strong>Spiral</strong> – from the centre outwards</span></label>
+    </section>
+
+    <section class="card" data-mode="tsp">
       <h2>Points</h2>
       <div class="row">
         <label for="PointCount">Number of points</label>
@@ -23,6 +31,16 @@
       </div>
       <label class="check"><input id="AutoPointCount" data-section="tsp" data-key="AutoPointCount" type="checkbox"> Automatic (from image size)</label>
       <p class="hint" id="pointHint"></p>
+    </section>
+
+    <section class="card" data-mode="spiral" hidden>
+      <h2>Spiral</h2>
+      <div class="row">
+        <label for="Rings">Rings</label>
+        <input id="Rings" data-section="spiral" data-key="Rings" type="number" min="1" max="5000" step="5">
+      </div>
+      <label class="check"><input id="FillRectangle" data-section="spiral" data-key="FillRectangle" type="checkbox"> Fill the whole rectangle (otherwise round)</label>
+      <p class="hint" id="spiralHint"></p>
     </section>
 
     <section class="card">

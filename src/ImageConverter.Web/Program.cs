@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using ImageConverter.Core.GCode;
+using ImageConverter.Core.Spiral;
 using ImageConverter.Core.Tsp;
 using ImageConverter.Web;
 using Microsoft.AspNetCore.Http.Features;
@@ -87,7 +88,8 @@ app.MapPost("/api/jobs", async (HttpRequest request, JobManager jobs) =>
     string name = Path.GetFileNameWithoutExtension(form["name"].ToString());
     if (string.IsNullOrWhiteSpace(name)) name = "image";
 
-    var job = jobs.Start(gray, width, height, name, tsp, gcode);
+    string mode = settings.Mode?.Trim().ToLowerInvariant() == "spiral" ? "spiral" : "tsp";
+    var job = jobs.Start(gray, width, height, name, mode, tsp, settings.Spiral ?? new SpiralSettings(), gcode);
     return Results.Ok(new { id = job.Id });
 }).DisableAntiforgery();
 
@@ -108,13 +110,13 @@ app.MapGet("/api/jobs/{id}/path", (string id, JobManager jobs) =>
 
 app.MapGet("/api/jobs/{id}/gcode", (string id, JobManager jobs) =>
     jobs.TryGet(id, out var job) && job.GCodeBytes is { } b
-        ? Results.File(b, "text/plain", $"{job.Name}_tsp.gcode")
+        ? Results.File(b, "text/plain", $"{job.Name}_{job.FileSuffix}.gcode")
         : Results.NotFound());
 
 app.MapGet("/api/jobs/{id}/svg", (string id, double? strokeMm, JobManager jobs) =>
     jobs.TryGet(id, out var job) && job.Status == JobStatus.Done
         ? Results.File(Encoding.UTF8.GetBytes(JobManager.Svg(job, Math.Clamp(strokeMm ?? 0.3, 0.01, 10))),
-                       "image/svg+xml", $"{job.Name}_tsp.svg")
+                       "image/svg+xml", $"{job.Name}_{job.FileSuffix}.svg")
         : Results.NotFound());
 
 app.Run();

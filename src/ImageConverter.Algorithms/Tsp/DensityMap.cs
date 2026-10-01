@@ -19,26 +19,47 @@ public sealed class DensityMap
     }
 
     /// <param name="gray">Luminance 0..255, row-major.</param>
-    public static DensityMap FromGray(float[] gray, int width, int height, TspArtSettings s, int pointCount)
-    {
-        var (small, w, h) = Resample(gray, width, height, WorkingLongSide(width, height, s, pointCount));
+    public static DensityMap FromGray(float[] gray, int width, int height, TspArtSettings s, int pointCount) =>
+        FromGray(gray, width, height, WorkingLongSide(width, height, s, pointCount),
+                 s.Gamma, s.WhiteCutoff, s.EdgeWeight, s.Invert);
 
-        float[] edges = s.EdgeWeight > 0 ? SobelMagnitude(small, w, h) : new float[w * h];
-        float edgeWeight = Math.Clamp(s.EdgeWeight, 0f, 1f);
-        float gamma = Math.Max(0.05f, s.Gamma);
-        float cutoff = Math.Clamp(s.WhiteCutoff, 0f, 0.99f);
+    /// <param name="gray">Luminance 0..255, row-major.</param>
+    /// <param name="longSide">Longest side of the working image in pixels.</param>
+    public static DensityMap FromGray(float[] gray, int width, int height, int longSide,
+                                      float gamma, float whiteCutoff, float edgeWeight, bool invert)
+    {
+        var (small, w, h) = Resample(gray, width, height, Math.Max(16, longSide));
+
+        edgeWeight = Math.Clamp(edgeWeight, 0f, 1f);
+        float[] edges = edgeWeight > 0 ? SobelMagnitude(small, w, h) : new float[w * h];
+        gamma = Math.Max(0.05f, gamma);
+        float cutoff = Math.Clamp(whiteCutoff, 0f, 0.99f);
 
         var values = new float[w * h];
         for (int i = 0; i < values.Length; i++)
         {
             float dark = 1f - small[i] / 255f;
-            if (s.Invert) dark = 1f - dark;
+            if (invert) dark = 1f - dark;
             dark = MathF.Pow(Math.Clamp(dark, 0f, 1f), gamma);
 
             float d = (1f - edgeWeight) * dark + edgeWeight * edges[i];
             values[i] = d < cutoff ? 0f : d;
         }
         return new DensityMap(w, h, values);
+    }
+
+    /// <summary>Bilinear sample at (x, y) in pixel coordinates (pixel centres at +0.5). Outside the image: 0.</summary>
+    public float Sample(float x, float y)
+    {
+        if (x < 0 || y < 0 || x > Width || y > Height) return 0f;
+        float fx = Math.Clamp(x - 0.5f, 0f, Width - 1.001f);
+        float fy = Math.Clamp(y - 0.5f, 0f, Height - 1.001f);
+        int x0 = (int)fx, y0 = (int)fy;
+        int x1 = Math.Min(x0 + 1, Width - 1), y1 = Math.Min(y0 + 1, Height - 1);
+        float tx = fx - x0, ty = fy - y0;
+        float top = Values[y0 * Width + x0] * (1 - tx) + Values[y0 * Width + x1] * tx;
+        float bottom = Values[y1 * Width + x0] * (1 - tx) + Values[y1 * Width + x1] * tx;
+        return top * (1 - ty) + bottom * ty;
     }
 
     /// <summary>

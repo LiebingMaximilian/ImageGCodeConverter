@@ -1,5 +1,6 @@
 using System.Drawing.Imaging;
 using ImageConverter.Core.GCode;
+using ImageConverter.Core.Spiral;
 using ImageConverter.Core.Tsp;
 
 namespace ImageConverter.Core;
@@ -47,25 +48,39 @@ public sealed class ImageProcessor
 
     /// <summary>Converts the image into one continuous line (TSP art) and writes preview PNG + G-code.</summary>
     public ProcessResult ProcessTspArt(string inputPath, TspArtSettings tsp, GCodeSettings gcode,
-                                       IProgress<string>? progress = null, CancellationToken ct = default)
+                                       IProgress<string>? progress = null, CancellationToken ct = default) =>
+        ProcessLineArt(inputPath, "_tsp", bitmap => TspArtBitmap.Generate(bitmap, tsp, progress, ct),
+                       tsp.PreviewScale, tsp.PreviewLineWidth, tsp.PreviewMaxSize, gcode, progress);
+
+    /// <summary>One spiral from the image centre outwards (see <see cref="SpiralGenerator"/>), preview PNG + G-code.</summary>
+    public ProcessResult ProcessSpiral(string inputPath, SpiralSettings spiral, GCodeSettings gcode,
+                                       IProgress<string>? progress = null, CancellationToken ct = default) =>
+        ProcessLineArt(inputPath, "_spiral",
+                       bitmap => SpiralGenerator.Generate(BitmapPixels.ToGrayscale(bitmap), bitmap.Width, bitmap.Height,
+                                                          spiral, progress, ct),
+                       previewScale: 2f, previewLineWidth: 1f, previewMaxSize: 6000, gcode, progress);
+
+    private ProcessResult ProcessLineArt(string inputPath, string suffix, Func<System.Drawing.Bitmap, LineArtResult> generate,
+                                         float previewScale, float previewLineWidth, int previewMaxSize,
+                                         GCodeSettings gcode, IProgress<string>? progress)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
         int width, height;
-        TspArtResult art;
+        LineArtResult art;
         using (var bitmap = ImageLoader.LoadAsBitmap(inputPath))
         {
             width = bitmap.Width;
             height = bitmap.Height;
-            art = TspArtBitmap.Generate(bitmap, tsp, progress, ct);
+            art = generate(bitmap);
         }
 
         progress?.Report("Writing preview and G-code…");
-        string basePath = GetUniqueBasePath(inputPath, "_tsp", ".png", ".gcode");
+        string basePath = GetUniqueBasePath(inputPath, suffix, ".png", ".gcode");
         string pngPath = basePath + ".png";
         string gcodePath = basePath + ".gcode";
 
-        using (var preview = TspArtBitmap.RenderPreview(art, tsp.PreviewScale, tsp.PreviewLineWidth, tsp.PreviewMaxSize))
+        using (var preview = TspArtBitmap.RenderPreview(art, previewScale, previewLineWidth, previewMaxSize))
             preview.Save(pngPath, ImageFormat.Png);
 
         var g = GCodeWriter.Write(art.Path, art.Width, art.Height, gcode, Path.GetFileName(inputPath));

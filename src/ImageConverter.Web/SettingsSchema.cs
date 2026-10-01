@@ -1,14 +1,18 @@
 using System.ComponentModel;
 using System.Reflection;
 using ImageConverter.Core.GCode;
+using ImageConverter.Core.Spiral;
 using ImageConverter.Core.Tsp;
 
 namespace ImageConverter.Web;
 
-/// <summary>Settings sent by the browser: { "tsp": {...}, "gcode": {...} } (property names as in the C# classes).</summary>
+/// <summary>Settings sent by the browser: { "mode": "tsp"|"spiral", "tsp": {...}, "spiral": {...}, "gcode": {...} }
+/// (property names as in the C# classes).</summary>
 public sealed class JobSettings
 {
+    public string? Mode { get; set; }
     public TspArtSettings? Tsp { get; set; }
+    public SpiralSettings? Spiral { get; set; }
     public GCodeSettings? GCode { get; set; }
 }
 
@@ -22,7 +26,8 @@ public sealed record SettingField(string Section, string Name, string Label, str
 public static class SettingsSchema
 {
     public static IReadOnlyList<SettingField> Describe() =>
-        [.. Describe("tsp", new TspArtSettings()), .. Describe("gcode", new GCodeSettings())];
+        [.. Describe("tsp", new TspArtSettings()), .. Describe("spiral", new SpiralSettings()),
+         .. Describe("gcode", new GCodeSettings())];
 
     private static IEnumerable<SettingField> Describe(string section, object defaults)
     {

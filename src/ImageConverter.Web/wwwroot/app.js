@@ -10,10 +10,15 @@ const $ = (id) => document.getElementById(id);
 const STORAGE_KEY = 'imageconverter.settings.v2';
 const OLD_STORAGE_KEY = 'imageconverter.settings.v1';            // stored *all* values
 const RESET_ON_MIGRATION = ['AutoPixelsPerPoint', 'AutoMinPoints', 'AutoMaxPoints'];
+const MODE_KEY = 'imageconverter.mode';
+const SECTIONS = ['tsp', 'spiral', 'gcode'];
+const SECTION_TITLES = { tsp: 'TSP art', spiral: 'Spiral', gcode: 'G-code' };
+const MODE_SECTIONS = new Set(['tsp', 'spiral']);   // only shown in their own mode
 
 // Shown in the cards at the top, so they are skipped in the "All parameters" list.
 const ESSENTIAL = new Set([
   'tsp.PointCount', 'tsp.AutoPointCount',
+  'spiral.Rings', 'spiral.FillRectangle',
   'gcode.WidthMm', 'gcode.HeightMm', 'gcode.KeepAspectRatio',
   'gcode.PenDownCommand', 'gcode.PenUpCommand', 'gcode.FeedRate',
 ]);
@@ -21,7 +26,8 @@ const ESSENTIAL = new Set([
 const state = {
   schema: [],                 // [{section, name, label, category, description, type, value}]
   fields: new Map(),          // "section.Name" -> schema entry
-  settings: { tsp: {}, gcode: {} },
+  settings: { tsp: {}, spiral: {}, gcode: {} },
+  mode: 'tsp',                // 'tsp' | 'spiral'
   image: null,                // { name, width, height, gray: Uint8Array, bitmap: ImageBitmap }
   jobId: null,
   polling: null,
@@ -51,7 +57,7 @@ async function loadSchema() {
       }
     }
     if (saved) {
-      for (const section of ['tsp', 'gcode']) {
+      for (const section of SECTIONS) {
         for (const [k, v] of Object.entries(saved[section] || {})) {
           if (state.fields.has(`${section}.${k}`)) state.settings[section][k] = v;
         }
@@ -65,15 +71,28 @@ async function loadSchema() {
   buildAllParams();
   bindInputs();
   refreshInputs();
+
+  let mode = 'tsp';
+  try { mode = localStorage.getItem(MODE_KEY) || 'tsp'; } catch { /* ignore */ }
+  setMode(mode);
+}
+
+/** Switches between TSP art and spiral: shows only the matching parameters. */
+function setMode(mode) {
+  state.mode = mode === 'spiral' ? 'spiral' : 'tsp';
+  try { localStorage.setItem(MODE_KEY, state.mode); } catch { /* ignore */ }
+  for (const radio of document.querySelectorAll('input[name="mode"]')) radio.checked = radio.value === state.mode;
+  for (const el of document.querySelectorAll('[data-mode]')) el.hidden = el.dataset.mode !== state.mode;
+  updateHints();
 }
 
 function applyDefaults() {
-  state.settings = { tsp: {}, gcode: {} };
+  state.settings = { tsp: {}, spiral: {}, gcode: {} };
   for (const f of state.schema) state.settings[f.section][f.name] = structuredClone(f.value);
 }
 
 function saveSettings() {
-  const changed = { tsp: {}, gcode: {} };
+  const changed = { tsp: {}, spiral: {}, gcode: {} };
   for (const f of state.schema) {
     const v = state.settings[f.section][f.name];
     if (JSON.stringify(v) !== JSON.stringify(f.value)) changed[f.section][f.name] = v;
@@ -88,13 +107,14 @@ function buildAllParams() {
   for (const f of state.schema) {
     if (ESSENTIAL.has(`${f.section}.${f.name}`)) continue;
     if (f.section === 'tsp' && f.category === 'Preview') continue;   // WinForms-only PNG settings
-    const title = `${f.section === 'tsp' ? 'Line' : 'G-code'} · ${f.category}`;
-    if (!groups.has(title)) groups.set(title, []);
-    groups.get(title).push(f);
+    const title = `${SECTION_TITLES[f.section] ?? f.section} · ${f.category}`;
+    if (!groups.has(title)) groups.set(title, { section: f.section, fields: [] });
+    groups.get(title).fields.push(f);
   }
 
-  for (const [title, fields] of groups) {
+  for (const [title, { section, fields }] of groups) {
     const details = document.createElement('details');
+    if (MODE_SECTIONS.has(section)) details.dataset.mode = section;
     const summary = document.createElement('summary');
     summary.textContent = title;
     details.appendChild(summary);
@@ -227,8 +247,28 @@ function updateHints() {
   }
   $('pointHint').textContent = hint;
 
+  // spiral: ring spacing on paper
+  const sp = state.settings.spiral;
+  const round = state.mode === 'spiral' && !sp.FillRectangle;
+  let shortSideMm = Math.min(g.WidthMm, g.HeightMm);
+  if (state.image && g.KeepAspectRatio && !round) {
+    const a = state.image.width / state.image.height;
+    const w = Math.min(g.WidthMm, g.HeightMm * a);
+    shortSideMm = Math.min(w, w / a);
+  }
+  if (sp && sp.Rings > 0 && shortSideMm > 0) {
+    const spacing = shortSideMm / 2 / sp.Rings;
+    const gap = spacing * (1 - Math.min(1, Math.max(0, sp.Amplitude ?? 0.9)));
+    $('spiralHint').textContent =
+      `Ring spacing ≈ ${spacing.toFixed(2)} mm (closest gap in dark areas ≈ ${gap.toFixed(2)} mm). ` +
+      (sp.FillRectangle ? 'Outside the image the line follows the border, which gives a thin frame.'
+                        : 'The picture is the circle that fits inside the image.');
+  }
+
   let size = `${g.WidthMm} × ${g.HeightMm} mm area`;
-  if (state.image && g.KeepAspectRatio) {
+  if (round && g.KeepAspectRatio) {
+    size = `Drawing ≈ ${shortSideMm.toFixed(0)} mm circle.`;
+  } else if (state.image && g.KeepAspectRatio) {
     const a = state.image.width / state.image.height;
     const w = Math.min(g.WidthMm, g.HeightMm * a), h = w / a;
     size = `Drawing ≈ ${w.toFixed(0)} × ${h.toFixed(0)} mm (image aspect ratio kept).`;
@@ -327,7 +367,7 @@ async function generate() {
   form.append('width', state.image.width);
   form.append('height', state.image.height);
   form.append('name', state.image.name);
-  form.append('settings', JSON.stringify(state.settings));
+  form.append('settings', JSON.stringify({ mode: state.mode, ...state.settings }));
   form.append('gray', new Blob([state.image.gray], { type: 'application/octet-stream' }), 'gray.bin');
 
   try {
@@ -387,7 +427,7 @@ async function showResult(job) {
   setStatus('Loading preview…');
   const res = await fetch(`api/jobs/${job.id}/path`);
   const points = new Float32Array(await res.arrayBuffer());
-  state.result = { points, stats: job.stats, id: job.id, unitsPerMm: unitsPerMm(points, job.stats) };
+  state.result = { points, stats: job.stats, id: job.id, mode: job.mode, unitsPerMm: unitsPerMm(points, job.stats) };
   buildPath2d();
   fitView();
 
@@ -608,7 +648,7 @@ function downloadPng() {
   c.toBlob((blob) => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = (state.image?.name?.replace(/\.[^.]+$/, '') || 'image') + '_tsp.png';
+    a.download = (state.image?.name?.replace(/\.[^.]+$/, '') || 'image') + `_${state.result.mode || 'tsp'}.png`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 10000);
   }, 'image/png');
@@ -626,6 +666,10 @@ async function init() {
 
   step('drop zone', setupDrop);
   step('preview', setupCanvas);
+  step('mode', () => {
+    for (const radio of document.querySelectorAll('input[name="mode"]'))
+      radio.addEventListener('change', () => { if (radio.checked) setMode(radio.value); });
+  });
   step('buttons', () => {
     $('generateBtn').addEventListener('click', generate);
     $('cancelBtn').addEventListener('click', cancel);

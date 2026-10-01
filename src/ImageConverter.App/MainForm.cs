@@ -13,6 +13,10 @@ public sealed class MainForm : Form
 {
     private const string DropText = "Drop JPG / PNG images here";
 
+    /// <summary>Order of the entries in the mode dropdown.</summary>
+    private static readonly ConversionMode[] ModeOrder =
+        [ConversionMode.TspArt, ConversionMode.Spiral, ConversionMode.Sobel];
+
     private readonly ImageProcessor _processor = new();
     private AppSettings _settings = AppSettings.Load();
 
@@ -99,11 +103,11 @@ public sealed class MainForm : Form
 
         // --- toolbar --------------------------------------------------------
         _mode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 260 };
-        _mode.Items.AddRange(["TSP art – single line + G-code", "Sobel edges"]);
-        _mode.SelectedIndex = _settings.Mode == ConversionMode.Sobel ? 1 : 0;
+        _mode.Items.AddRange(["TSP art – single line + G-code", "Spiral – single line + G-code", "Sobel edges"]);
+        _mode.SelectedIndex = Array.IndexOf(ModeOrder, _settings.Mode) is var idx and >= 0 ? idx : 0;
         _mode.SelectedIndexChanged += (_, _) =>
         {
-            _settings.Mode = _mode.SelectedIndex == 1 ? ConversionMode.Sobel : ConversionMode.TspArt;
+            _settings.Mode = ModeOrder[Math.Max(0, _mode.SelectedIndex)];
             _settings.Save();
             UpdateCaptions();
             SyncPointControls();
@@ -336,9 +340,12 @@ public sealed class MainForm : Form
                 _status.Text = $"Processing {Path.GetFileName(file)}…";
                 CancellationToken ct = _cts.Token;
 
-                ProcessResult result = await Task.Run(() => s.Mode == ConversionMode.Sobel
-                    ? _processor.Process(file, s.Sobel.Threshold, s.Sobel.Invert)
-                    : _processor.ProcessTspArt(file, s.Tsp, s.GCode, progress, ct));
+                ProcessResult result = await Task.Run(() => s.Mode switch
+                {
+                    ConversionMode.Sobel => _processor.Process(file, s.Sobel.Threshold, s.Sobel.Invert),
+                    ConversionMode.Spiral => _processor.ProcessSpiral(file, s.Spiral, s.GCode, progress, ct),
+                    _ => _processor.ProcessTspArt(file, s.Tsp, s.GCode, progress, ct)
+                });
 
                 SetPreview(_outputBox, result.OutputPath);
 
